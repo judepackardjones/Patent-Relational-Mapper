@@ -16,10 +16,10 @@ async fn main() {
     let mut highest: i64 = 0;
     let mut lowest_patent_num: i64 = 0;  
     let farming_words1: String = fs::read_to_string
-    ("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt")
+    ("C:/Users/judep/OneDrive/Desktop/Programming/Rust/clonetesting/Project assets/FarmingQueryWords1.txt")
     .expect("Error reading file 1");
     let farming_words_2: String = fs::read_to_string
-    ("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt")
+    ("C:/Users/judep/OneDrive/Desktop/Programming/Rust/clonetesting/Project assets/FarmingQueryWords2.txt")
     .expect("Error reading file 2");
     let mut farming_words: &String;
     let mut loop_counter: i8 = 0;
