@@ -3,7 +3,8 @@ use std::time::Duration;
 use reqwest;
 use reqwest::Response;
 use regex::{Regex, Captures};
-
+use std::env;
+use std::fs;
 struct Patent {
     title: String, 
     date: String,
@@ -14,8 +15,12 @@ struct Patent {
 async fn main() {
     let mut highest: i64 = 0;
     let mut lowest_patent_num: i64 = 0;  
-    let farming_words1: String = String::from("acre aeroponics agrarian agriculture agricultural agri agrobiology agro barrow biofertilizer biofuel biodynamic bioturbation boar broadacre seed seeding broadfork crop candling capon carryover cattle prod cereal chaff chemigation chevon chillcuring citriculture cock cockerel combine_harvester compost contouring contour coppicing copse cow cropdusting cultipacker cultivar cultivation deadheading deblossoming defoliant detasseling dibber domestication draff earmark ecology edaphology emblements ewe fallow farm farmer farmland farmstead fatling feed_grain fencerow feedlot filly floriculture fodder foodscaping foodshed forage freemartin garden gardening germination gleaning gilt goad grain gobbler grazier grazing greenhouse gristmill groundcover hardpan harrow harvesting harvest harvester hay haycock hayloft hayrack hectare heifer hen herbicide hilling hinny hoophouse hotbed hudsbandry incubator intercropping irrigation jenny jennet lamb landrace liming livestock acre agronomy alfalfa alligator apple apricot aquaculture arable barn barley beans bee beef beehive beet bell pepper bison blackberry blueberry broccoli cabbage calf carrot cauliflower cattle celery chicken chickpea chili pepper clover corn cotton cow cranberry cucumber dairy date eggplant fence fertilizer fig flax flour garlic goat goose grapes guava hogs honey horse hydroponics kale lettuce lime maize mango manure melon millet mint mulch mushroom oat onion orchard organic pasture pea peach pear pesticide pig pineapple plum poultry pumpkin quail rabbit radish ranch rice rye sheep swine tractor turkey vineyard wheat yam apiary bumblebee");
-    let farming_words_2: String = String::from("buzzard canary canola cattleman chick clover colt cottonwood cranberry crocus crow daffodil dairy dandelion dapple drought duck egg farmer fence fleece flywheel foal foxtail fryer garden geese gingham grassland grapes grove guinea gumdrop hayfield haying haystack herd hickory hive honeysuckle horseback horticulture hybrid insecticide kernel ketchup lamb leaf log maple market meadow milker mill mulberry mustard nectar nursery nutria oats oxen pasture peach peanut pears peas pecan pepper piglet plow pomegranate potato purse quince rancher redwood rhubarb rosemary rosette salamander saltwort sapling scythe seedbed sorrel sparrow sprig stubble tailwater thistle toadstool topsoil treadle vegetable vinegar waggle dace deodar farina fennel hide horse chestnut hydrangea iodine kiwi larch lily manger marjoram masticate medlar meadowlark meatloaf milking minty mister mollusk mossy oatmeal orchid ostrich paddy padlock parsley passionfruit pea pod peachy peanut brittle percolate pigeon pinion pine pitchfork plum pudding pony prairie purse quail rake rancher redwood rosemary rosette saltwort sapling scythe sorrel sparrow sprig stubble tailwater thistle toadstool topsoil treadle vinegar waggle wilderness windbreak yarrow lodging lynchet malt mare meadow monocropping agribusiness agritech biodiversity biomass diversification ecofriendly hydroponics aquaponics biodegradable seedbank agroforestry agroecology biopesticides"); 
+    let farming_words1: String = fs::read_to_string
+    ("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt")
+    .expect("Error reading file 1");
+    let farming_words_2: String = fs::read_to_string
+    ("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt")
+    .expect("Error reading file 2");
     let mut farming_words: &String;
     let mut loop_counter: i8 = 0;
     let mut patents: Vec<Patent> = Vec::new();
@@ -86,7 +91,6 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64){
             .unwrap_or(0), 
     });
     }
-    println!("test");
     println!("Highest is: {}", highest);
     (parsed_patent, highest)
 }
