@@ -86,6 +86,7 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64){
             .unwrap_or(0), 
     });
     }
+    println!("test");
     println!("Highest is: {}", highest);
     (parsed_patent, highest)
 }
