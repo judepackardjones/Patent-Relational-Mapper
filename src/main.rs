@@ -3,8 +3,14 @@ use std::time::Duration;
 use reqwest;
 use reqwest::Response;
 use regex::{Regex, Captures};
-use std::env;
 use std::fs;
+use csv;
+use std::io;
+use std::error::Error;
+use std::fs::OpenOptions;
+use std::io::prelude::*;
+use std::io::BufReader;
+use std::fs::File;
 struct Patent {
     title: String, 
     date: String,
@@ -13,6 +19,18 @@ struct Patent {
 
 #[tokio::main]
 async fn main() {
+    let thing = Patent {
+        title: String::from("Hello"),
+        date: String::from("test"),
+        number: 8,
+    };
+    let thing2 = Patent {
+        title: String::from("Hello"),
+        date: String::from("test2"),
+        number: 8,
+    };
+    let _ = write_data(&thing);
+    let _ = write_data(&thing2);
     let mut highest: i64 = 0;
     let mut lowest_patent_num: i64 = 0;  
     let farming_words1: String = fs::read_to_string
@@ -26,6 +44,7 @@ async fn main() {
     let mut patents: Vec<Patent> = Vec::new();
     let mut patent_temp_list: Vec<Patent> = Vec::new();
     loop {
+        lowest_patent_num = read_first_line().unwrap();
         patent_temp_list.clear();
     match loop_counter {
         0 => {
@@ -52,6 +71,7 @@ async fn main() {
     }
     if loop_counter == 1 {
         if highest > lowest_patent_num {lowest_patent_num = highest;}
+        //Change to add comparison and writing highest into csv
     }
     }
 
@@ -92,5 +112,40 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64){
     });
     }
     println!("Highest is: {}", highest);
+    
     (parsed_patent, highest)
+}
+
+fn write_highest(patent: &Patent, highest: &i64){
+    let file = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
+    let text: String = String::from(highest.to_string());
+    fs::write(file, text).expect("Failed to write to file.");
+    
+}
+
+fn write_data(patent: &Patent) -> std::io::Result<()> {
+    let path: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
+    let mut file = OpenOptions::new()
+    .append(true)
+    .open(path)
+    .unwrap();
+    let text: String = String::from(patent.title.clone().to_string() + "," + patent.date.clone().as_str() + "," + &patent.number.to_string().as_str().clone());
+    if let Err(e) = writeln!(file, "{}", text) {
+        eprintln!("Couldn't write to file: {}", e);
+    }
+    Ok(())
+}
+
+fn read_first_line() -> std::io::Result<i64> {
+    let filepath: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
+    let file = File::open(filepath)?;
+    let reader = BufReader::new(file);
+    let mut vec: Vec<String> = Vec::new();
+    for line in reader.lines() {
+        if vec.len() == 1 {
+            return Ok(vec[0].parse::<i64>().unwrap());
+        }
+        vec.push(line.unwrap());
+    }
+    return Ok(-1);
 }
