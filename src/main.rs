@@ -4,13 +4,11 @@ use reqwest;
 use reqwest::Response;
 use regex::{Regex, Captures};
 use std::fs;
-use csv;
-use std::io;
-use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
+use console::Term;
 struct Patent {
     title: String, 
     date: String,
@@ -31,8 +29,8 @@ async fn main() {
     let mut loop_counter: i8 = 0;
     let mut patents: Vec<Patent> = Vec::new();
     let mut patent_temp_list: Vec<Patent> = Vec::new();
+    let stdout = Term::buffered_stdout();
     loop {
-        lowest_patent_num = read_first_line().unwrap();
         patent_temp_list.clear();
     match loop_counter {
         0 => {
@@ -59,6 +57,12 @@ async fn main() {
     if loop_counter == 1 {
         if highest > lowest_patent_num {lowest_patent_num = highest;}
         //Change to add comparison and writing highest into csv
+    }
+    if let Ok(character) = stdout.read_char() {
+        match character {
+            'w' => {break;},
+            _ => {}
+        }
     }
     thread::sleep(Duration::from_secs_f32(1.3));
     }

@@ -12,7 +12,7 @@ tokio = {version = "1", features = ["full"]}
 serde_json = "1.0.74"
 regex = "1.9.5"
 csv = "1.2.2"
-
+console = "0.15.7"
 [profile.dev]
 opt-level = 1
 
