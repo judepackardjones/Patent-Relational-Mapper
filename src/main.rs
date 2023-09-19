@@ -19,18 +19,6 @@ struct Patent {
 
 #[tokio::main]
 async fn main() {
-    let thing = Patent {
-        title: String::from("Hello"),
-        date: String::from("test"),
-        number: 8,
-    };
-    let thing2 = Patent {
-        title: String::from("Hello"),
-        date: String::from("test2"),
-        number: 8,
-    };
-    let _ = write_data(&thing);
-    let _ = write_data(&thing2);
     let mut highest: i64 = 0;
     let mut lowest_patent_num: i64 = 0;  
     let farming_words1: String = fs::read_to_string
@@ -63,7 +51,6 @@ async fn main() {
     let resp: Response = reqwest::get(&query).await.unwrap();
     let body = resp.text().await.unwrap();
     //println!("{}", body);
-    thread::sleep(Duration::from_secs_f32(1.3));
     (patent_temp_list, highest) = format_patent(body);
     patents.append(&mut patent_temp_list);
     for pat in &patents {
@@ -73,9 +60,14 @@ async fn main() {
         if highest > lowest_patent_num {lowest_patent_num = highest;}
         //Change to add comparison and writing highest into csv
     }
+    thread::sleep(Duration::from_secs_f32(1.3));
     }
-
+    for pat in &patents {
+        let _ = write_data(pat);
+    }
 }
+
+
 
 
 fn format_patent(patents: String) -> (Vec<Patent>, i64){
@@ -116,12 +108,8 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64){
     (parsed_patent, highest)
 }
 
-fn write_highest(patent: &Patent, highest: &i64){
-    let file = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
-    let text: String = String::from(highest.to_string());
-    fs::write(file, text).expect("Failed to write to file.");
-    
-}
+
+
 
 fn write_data(patent: &Patent) -> std::io::Result<()> {
     let path: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
