@@ -1,5 +1,7 @@
+use std::result;
 use std::thread;
 use std::time::Duration;
+use crossterm::event::KeyCode;
 use reqwest;
 use reqwest::Response;
 use regex::{Regex, Captures};
@@ -8,7 +10,8 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::fs::File;
-use console::Term;
+use crossterm::event::{poll, read, Event};
+
 struct Patent {
     title: String, 
     date: String,
@@ -16,9 +19,8 @@ struct Patent {
     }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> result::Result<(), std::io::Error> {
     let mut highest: i64 = 0;
-    let mut lowest_patent_num: i64 = 0;  
     let farming_words1: String = fs::read_to_string
     ("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt")
     .expect("Error reading file 1");
@@ -33,10 +35,30 @@ async fn main() {
     let mut loop_counter: i8 = 0;
     let mut patents: Vec<Patent> = Vec::new();
     let mut patent_temp_list: Vec<Patent> = Vec::new();
-    let stdout = Term::buffered_stdout();
+    // read user key
     loop {
-        patent_temp_list.clear();
-    match loop_counter {
+        let lowest_patent_num: i64 = read_first_line().unwrap(); 
+        println!("Lowest patent num found as {}", &lowest_patent_num.to_string());
+            if poll(Duration::from_millis(100)).unwrap() { // will be used to break out of loop
+                match read()? { 
+                    Event::Key(event)=>{
+                        if event == KeyCode::Char('w').into(){
+                            break;
+                        } else {
+                            continue;
+                        }
+                        },
+
+                    
+                    Event::FocusGained => todo!(),
+                    Event::FocusLost => todo!(),
+                    Event::Mouse(_) => todo!(),
+                    Event::Paste(_) => todo!(),
+                    Event::Resize(_, _) => todo!(), }
+            }
+            else {
+                patent_temp_list.clear(); // clears temp list s oti can be used on next loop.
+    match loop_counter { //changes the query word list every other loop 
         0 => {
             loop_counter = 1;
             farming_words = &farming_words1;
@@ -50,29 +72,28 @@ async fn main() {
         }
     }
     let mut query = String::from(format!(r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_gt":{{"patent_number":"{lowest_patent_num}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#));
-    let resp: Response = reqwest::get(&query).await.unwrap();
-    let body = resp.text().await.unwrap();
+    let resp: Response = reqwest::get(&query).await.unwrap(); //querys the api returns Response type
+    let body: String = resp.text().await.unwrap(); // parses response to String
     //println!("{}", body);
-    (patent_temp_list, highest) = format_patent(body);
-    patents.append(&mut patent_temp_list);
+    (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
+    patents.append(&mut patent_temp_list); // adds newly formatted patents to higher list. 
     for pat in &patents {
-        println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
+        // println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
     }
-    if loop_counter == 1 {
-        if highest > lowest_patent_num {lowest_patent_num = highest;}
+    }
+    if loop_counter == 1 { 
+        if highest > read_first_line().unwrap() {
+            write_highest(highest);
+        }
         //Change to add comparison and writing highest into csv
     }
-    if let Ok(character) = stdout.read_char() {
-        match character {
-            'w' => {break;},
-            _ => {}
-        }
-    }
     thread::sleep(Duration::from_secs_f32(1.3));
-    }
+}
     for pat in &patents {
         let _ = write_data(pat);
     }
+
+    Ok(())
 }
 
 
@@ -111,11 +132,9 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64){
             .unwrap_or(0), 
     });
     }
-    println!("Highest is: {}", highest);
     
     (parsed_patent, highest)
 }
-
 
 
 
@@ -125,23 +144,31 @@ fn write_data(patent: &Patent) -> std::io::Result<()> {
     .append(true)
     .open(path)
     .unwrap();
-    let text: String = String::from(patent.title.clone().to_string() + "," + patent.date.clone().as_str() + "," + &patent.number.to_string().as_str().clone());
+    let text_owner: String = String::new(); // If patent title contained commas, it was messing up writing to csv so needed to append quotes
+    let text: String = String::from(text_owner + r#"""# + patent.title.clone().as_str() + r#"""# + "," + patent.date.clone().as_str() + "," + &patent.number.to_string().as_str().clone());
     if let Err(e) = writeln!(file, "{}", text) {
         eprintln!("Couldn't write to file: {}", e);
     }
     Ok(())
 }
 
+
+
 fn read_first_line() -> std::io::Result<i64> {
-    let filepath: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
+    let filepath: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt";
     let file = File::open(filepath)?;
     let reader = BufReader::new(file);
-    let mut vec: Vec<String> = Vec::new();
-    for line in reader.lines() {
-        if vec.len() == 1 {
-            return Ok(vec[0].parse::<i64>().unwrap());
-        }
-        vec.push(line.unwrap());
-    }
-    return Ok(-1);
+    return Ok(reader.lines().next().unwrap().unwrap().parse::<i64>().unwrap());
+    
+}
+
+
+
+fn write_highest(highest: i64) -> std::io::Result<()>{
+    let filepath: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt";
+    // Add windows path
+    let mut file = File::create(filepath)?;
+    file.write_all(highest.to_string().as_bytes())?;
+    Ok(())
+
 }

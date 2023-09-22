@@ -13,8 +13,11 @@ serde_json = "1.0.74"
 regex = "1.9.5"
 csv = "1.2.2"
 console = "0.15.7"
+crossterm = "0.27.0"
+crokey = "0.5.1"
+
 [profile.dev]
-opt-level = 1
+opt-level = 0
 
 [profile.release]
-opt-level = 3
+opt-level = 1
