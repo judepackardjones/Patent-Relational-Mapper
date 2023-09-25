@@ -50,11 +50,8 @@ async fn main() -> result::Result<(), std::io::Error> {
                         },
 
                     
-                    Event::FocusGained => todo!(),
-                    Event::FocusLost => todo!(),
-                    Event::Mouse(_) => todo!(),
-                    Event::Paste(_) => todo!(),
-                    Event::Resize(_, _) => todo!(), }
+                    _ => {}
+                }
             }
             else {
                 patent_temp_list.clear(); // clears temp list s oti can be used on next loop.
