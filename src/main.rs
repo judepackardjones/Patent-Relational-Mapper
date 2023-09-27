@@ -43,8 +43,7 @@ async fn main() -> result::Result<(), std::io::Error> {
         let mut date_text = String::new();
         let mut lowest_patent_num: i64 = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap();
     loop {
-        earliest_date += dur::days(1);
-        println!("Earlydate at start of loop{:?}", earliest_date);
+        println!("Earlydate at start of loop {:?}", earliest_date);
         date_text.clear();
         date_text = date_text
             + earliest_date.year().to_string().as_str()
@@ -62,6 +61,7 @@ async fn main() -> result::Result<(), std::io::Error> {
                 ""
             }
             + &earliest_date.day().to_string().as_str();
+        println!("Date text is {}", date_text);
         farming_words = if loop_counter {
             &farming_words1
         } else {
@@ -87,32 +87,27 @@ async fn main() -> result::Result<(), std::io::Error> {
             }
         } else {
             patent_temp_list.clear(); // clears temp list so it can be used on next loop.
-            let firstline_date = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt").unwrap();
-            println!("Reached query");
             let query = String::from(format!(
-                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_lt":{{"patent_date":"{firstline_date}"}}}},{{"_gt":{{"patent_number":"{lowest_patent_num}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
+                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_lt":{{"patent_date":"{date_text}"}}}},{{"_gt":{{"patent_number":"{lowest_patent_num}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
             ));
-            println!("Passed query");
             let resp: Response = reqwest::get(&query).await.unwrap(); //querys the api returns Response type
-            println!("Passed reqwuest parsing");
             let body: String = resp.text().await.unwrap(); // parses response to String
             println!("{}", body);
-
             (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
             patents.append(&mut patent_temp_list); // adds newly formatted patents to higher list.
-            for pat in &patents {
-                println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
-                // re lve _ from pat if you want to use it
-            }
+            // for pat in &patents {
+            //     println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
+            //     // remove _ from pat if you want to use it
+            // }
         }
         if loop_counter == false {
             if highest > lowest_patent_num {
                 lowest_patent_num = highest;
             }
         }
-        println!("Date should be incremented");
+        earliest_date += dur::days(1);
         thread::sleep(Duration::from_secs_f32(1.3));
-    }
+    } // end of loop
     for pat in &patents {
         let _ = write_patent_data(pat);
     }
