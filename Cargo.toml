@@ -15,6 +15,8 @@ csv = "1.2.2"
 console = "0.15.7"
 crossterm = "0.27.0"
 crokey = "0.5.1"
+chrono = "0.4.31"
+cond_utils = '0.1.0'
 
 [profile.dev]
 opt-level = 0

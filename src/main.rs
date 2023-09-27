@@ -1,4 +1,6 @@
 #![allow(non_snake_case)]
+use chrono::{Datelike, Duration as dur, NaiveDate, TimeZone, Utc};
+use cond_utils::Between;
 use crossterm::event::KeyCode;
 use crossterm::event::{poll, read, Event};
 use regex::Regex;
@@ -12,7 +14,6 @@ use std::io::BufReader;
 use std::result;
 use std::thread;
 use std::time::Duration;
-
 struct Patent {
     title: String,
     date: String,
@@ -33,12 +34,40 @@ async fn main() -> result::Result<(), std::io::Error> {
     //"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords2.txt" WINDOWS
     //"/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt" MAC
     let mut farming_words: &String;
-    let mut loop_counter: i8 = 0;
+    let mut loop_counter: bool = true;
     let mut patents: Vec<Patent> = Vec::new();
     let mut patent_temp_list: Vec<Patent> = Vec::new();
     // read user key
+    let (year, month, day) = regex_date(fs::read_to_string("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt").expect("Found None"));
+        let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
+        let mut date_text = String::new();
+        let mut lowest_patent_num: i64 = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap();
     loop {
-        let lowest_patent_num: i64 = read_first_line().unwrap();
+        earliest_date += dur::days(1);
+        println!("Earlydate at start of loop{:?}", earliest_date);
+        date_text.clear();
+        date_text = date_text
+            + earliest_date.year().to_string().as_str()
+            + "-"
+            + if earliest_date.month().between(0, 10) {//change these so they read from the earliest_date struct
+                "0"
+            } else {
+                ""
+            }
+            + &earliest_date.month().to_string().as_str()
+            + "-"
+            + if earliest_date.day().between(0, 10) {
+                "0"
+            } else {
+                ""
+            }
+            + &earliest_date.day().to_string().as_str();
+        farming_words = if loop_counter {
+            &farming_words1
+        } else {
+            &farming_words_2
+        };
+        loop_counter = !loop_counter;
         println!(
             "Lowest patent num found as {}",
             &lowest_patent_num.to_string()
@@ -57,55 +86,48 @@ async fn main() -> result::Result<(), std::io::Error> {
                 _ => {}
             }
         } else {
-            patent_temp_list.clear(); // clears temp list s oti can be used on next loop.
-            match loop_counter {
-                //changes the query word list every other loop
-                0 => {
-                    loop_counter = 1;
-                    farming_words = &farming_words1;
-                }
-                1 => {
-                    loop_counter = 0;
-                    farming_words = &farming_words_2;
-                }
-                _ => {
-                    panic!("Loop counter set to non-valid value.");
-                }
-            }
+            patent_temp_list.clear(); // clears temp list so it can be used on next loop.
+            let firstline_date = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt").unwrap();
+            println!("Reached query");
             let query = String::from(format!(
-                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_gt":{{"patent_number":"{lowest_patent_num}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
+                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_lt":{{"patent_date":"{firstline_date}"}}}},{{"_gt":{{"patent_number":"{lowest_patent_num}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
             ));
+            println!("Passed query");
             let resp: Response = reqwest::get(&query).await.unwrap(); //querys the api returns Response type
+            println!("Passed reqwuest parsing");
             let body: String = resp.text().await.unwrap(); // parses response to String
-                                                           //println!("{}", body);
+            println!("{}", body);
+
             (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
             patents.append(&mut patent_temp_list); // adds newly formatted patents to higher list.
-            for _pat in &patents {
-                // println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
+            for pat in &patents {
+                println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
                 // re lve _ from pat if you want to use it
             }
         }
-        if loop_counter == 1 {
-            if highest > read_first_line().unwrap() {
-                match write_highest(highest) {
-                    Ok(()) => {}
-                    Err(err) => {
-                        println!("Error: {}", err);
-                        continue;
-                    }
-                }
+        if loop_counter == false {
+            if highest > lowest_patent_num {
+                lowest_patent_num = highest;
             }
-            //Change to add comparison and writing highest into csv
         }
+        println!("Date should be incremented");
         thread::sleep(Duration::from_secs_f32(1.3));
     }
     for pat in &patents {
-        let _ = write_data(pat);
+        let _ = write_patent_data(pat);
     }
-
+    let _ = write_to_file(date_text, "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt");
+    if highest > read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap() {
+        match write_to_file(highest.to_string(), "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt") {
+            Ok(()) => {}
+            Err(err) => {
+                println!("Error: {}", err);
+            }
+        }
+    }
     Ok(())
 }
-
+//TODO:Start of functions
 fn format_patent(patents: String) -> (Vec<Patent>, i64) {
     let mut highest: i64 = 0;
     let mut parsed_patent: Vec<Patent> = Vec::new();
@@ -148,7 +170,7 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64) {
     (parsed_patent, highest)
 }
 
-fn write_data(patent: &Patent) -> std::io::Result<()> {
+fn write_patent_data(patent: &Patent) -> std::io::Result<()> {
     let path: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
     let mut file = OpenOptions::new().append(true).open(path).unwrap();
     let text_owner: String = String::new(); // If patent title contained commas, it was messing up writing to csv so needed to append quotes
@@ -168,23 +190,32 @@ fn write_data(patent: &Patent) -> std::io::Result<()> {
     Ok(())
 }
 
-fn read_first_line() -> std::io::Result<i64> {
-    let filepath: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt";
+fn read_first_line(filepath: &str) -> std::io::Result<String> {
     let file = File::open(filepath)?;
     let reader = BufReader::new(file);
-    Ok(reader
-        .lines()
-        .next()
-        .unwrap()
-        .unwrap()
-        .parse::<i64>()
-        .unwrap())
+    Ok(reader.lines().next().unwrap().unwrap())
 }
 
-fn write_highest(highest: i64) -> std::io::Result<()> {
-    let filepath: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt";
-    // Add windows path
+fn write_to_file(text: String, filepath: &str) -> std::io::Result<()> {
+    println!("text being written:{}", text);
+    println!("Filepath:{}", filepath);
     let mut file = File::create(filepath)?;
-    file.write_all(highest.to_string().as_bytes())?;
+    file.write_all(text.as_bytes())?;
     Ok(())
+}
+
+fn regex_date(date: String) -> (i32, u32, u32) {
+    let re_date = Regex::new(r#"(\d{4})-(\d{2})-(\d{2})"#).unwrap();
+    println!("Date being parsed:{}", date);
+    let mut date_vec = vec![];
+    for (_, [year, month, day]) in re_date.captures_iter(&date).map(|c| c.extract()) {
+        date_vec.push(year.parse::<i32>().unwrap());
+        date_vec.push(month.parse::<i32>().unwrap());
+        date_vec.push(day.parse::<i32>().unwrap());
+    }
+    (
+        date_vec[0],
+        date_vec[1].try_into().unwrap(),
+        date_vec[2].try_into().unwrap(),
+    )
 }
