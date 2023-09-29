@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
-use chrono::{Datelike, Duration as dur, NaiveDate, TimeZone, Utc};
-use cond_utils::Between;
+use chrono::{Datelike, Duration as dur, NaiveDate};
 use crossterm::event::KeyCode;
 use crossterm::event::{poll, read, Event};
 use regex::Regex;
@@ -14,6 +13,8 @@ use std::io::BufReader;
 use std::result;
 use std::thread;
 use std::time::Duration;
+use std::fmt::Write;
+use std::io::Write as writ;
 struct Patent {
     title: String,
     date: String,
@@ -45,22 +46,7 @@ async fn main() -> result::Result<(), std::io::Error> {
     loop {
         println!("Earlydate at start of loop {:?}", earliest_date);
         date_text.clear();
-        date_text = date_text
-            + earliest_date.year().to_string().as_str()
-            + "-"
-            + if earliest_date.month().between(0, 10) {//change these so they read from the earliest_date struct
-                "0"
-            } else {
-                ""
-            }
-            + &earliest_date.month().to_string().as_str()
-            + "-"
-            + if earliest_date.day().between(0, 10) {
-                "0"
-            } else {
-                ""
-            }
-            + &earliest_date.day().to_string().as_str();
+        write!(date_text, "{:02}-{:02}-{:02}", earliest_date.year(), earliest_date.month(), earliest_date.day()).expect("");
         println!("Date text is {}", date_text);
         farming_words = if loop_counter {
             &farming_words1
@@ -97,13 +83,11 @@ async fn main() -> result::Result<(), std::io::Error> {
             patents.append(&mut patent_temp_list); // adds newly formatted patents to higher list.
             // for pat in &patents {
             //     println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
-            //     // remove _ from pat if you want to use it
+            //    
             // }
         }
-        if loop_counter == false {
-            if highest > lowest_patent_num {
+        if !loop_counter && highest > lowest_patent_num{
                 lowest_patent_num = highest;
-            }
         }
         earliest_date += dur::days(1);
         thread::sleep(Duration::from_secs_f32(1.3));
