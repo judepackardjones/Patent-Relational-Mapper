@@ -5,16 +5,16 @@ use crossterm::event::{poll, read, Event};
 use regex::Regex;
 use reqwest;
 use reqwest::Response;
+use std::fmt::Write;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::Write as writ;
 use std::result;
 use std::thread;
 use std::time::Duration;
-use std::fmt::Write;
-use std::io::Write as writ;
 struct Patent {
     title: String,
     date: String,
@@ -40,13 +40,20 @@ async fn main() -> result::Result<(), std::io::Error> {
     let mut patent_temp_list: Vec<Patent> = Vec::new();
     // read user key
     let (year, month, day) = regex_date(fs::read_to_string("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt").expect("Found None"));
-        let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
-        let mut date_text = String::new();
-        let mut lowest_patent_num: i64 = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap();
+    let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
+    let mut date_text = String::new();
+    let mut lowest_patent_num: i64 = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap();
     loop {
         println!("Earlydate at start of loop {:?}", earliest_date);
         date_text.clear();
-        write!(date_text, "{:02}-{:02}-{:02}", earliest_date.year(), earliest_date.month(), earliest_date.day()).expect("");
+        write!(
+            date_text,
+            "{:02}-{:02}-{:02}",
+            earliest_date.year(),
+            earliest_date.month(),
+            earliest_date.day()
+        )
+        .expect("");
         println!("Date text is {}", date_text);
         farming_words = if loop_counter {
             &farming_words1
@@ -81,16 +88,16 @@ async fn main() -> result::Result<(), std::io::Error> {
             println!("{}", body);
             (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
             patents.append(&mut patent_temp_list); // adds newly formatted patents to higher list.
-            // for pat in &patents {
-            //     println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
-            //    
-            // }
+                                                   // for pat in &patents {
+                                                   //     println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
+                                                   //
+                                                   // }
         }
-        if !loop_counter && highest > lowest_patent_num{
-                lowest_patent_num = highest;
+        if !loop_counter && highest > lowest_patent_num {
+            lowest_patent_num = highest;
         }
         earliest_date += dur::days(1);
-        thread::sleep(Duration::from_secs_f32(1.3));
+        thread::sleep(Duration::from_secs_f32(0.8));
     } // end of loop
     for pat in &patents {
         let _ = write_patent_data(pat);
