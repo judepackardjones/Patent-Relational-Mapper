@@ -41,6 +41,7 @@ async fn main() -> result::Result<(), std::io::Error> {
         .unwrap()
         .parse::<i64>()
         .unwrap();
+    let mut file_write_timer:u8 = 0;
     loop {
         // TODO: MAKE IT SO WRITE_ALL IS CALLED WITHIN THE LOOP EVERY MONTH OR SO
         let timer = Instant::now();
@@ -89,7 +90,13 @@ async fn main() -> result::Result<(), std::io::Error> {
             last_patent_highest = highest;
         }
         earliest_date += dur::days(1);
+        file_write_timer += 1;
         loop_counter = !loop_counter;
+        if file_write_timer == 30 {
+            write_all(&patents, &date_text, highest);
+            patents.clear();
+            file_write_timer = 0;
+        }
         let timer_millis = timer.elapsed().as_millis() as i64;
         println!("{}", timer_millis);
         thread::sleep(Duration::from_millis(if 1300 - timer_millis > 0 {
