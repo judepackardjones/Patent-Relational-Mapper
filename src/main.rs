@@ -24,24 +24,25 @@ struct Patent {
 #[tokio::main]
 async fn main() -> result::Result<(), std::io::Error> {
     let mut highest: i64 = 0;
-    let farming_words1: String = fs::read_to_string
-    (file_path_builder("query1"))
-    .expect("Error reading file 1");
-    let farming_words_2: String = fs::read_to_string
-    (file_path_builder("query2"))
-    .expect("Error reading file 2");
+    let farming_words1: String =
+        fs::read_to_string(file_path_builder("query1")).expect("Error reading file 1");
+    let farming_words_2: String =
+        fs::read_to_string(file_path_builder("query2")).expect("Error reading file 2");
     let mut farming_words: &String;
     let mut loop_counter: bool = true;
     let mut patents: Vec<Patent> = Vec::new();
     let mut patent_temp_list: Vec<Patent> = Vec::new();
     // read user key
-    let (year, month, day) = regex_date(fs::read_to_string(file_path_builder("date"))
-        .expect("Found None"));
+    let (year, month, day) =
+        regex_date(fs::read_to_string(file_path_builder("date")).expect("Found None"));
     let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
     let mut date_text = String::new();
     let mut last_patent_highest: i64 = read_first_line(file_path_builder("highest").as_str())
-        .unwrap().parse::<i64>().unwrap();
-    loop { // TODO: MAKE IT SO WRITE_ALL IS CALLED WITHIN THE LOOP EVERY MONTH OR SO
+        .unwrap()
+        .parse::<i64>()
+        .unwrap();
+    loop {
+        // TODO: MAKE IT SO WRITE_ALL IS CALLED WITHIN THE LOOP EVERY MONTH OR SO
         let timer = Instant::now();
         date_text.clear();
         write!(
@@ -58,10 +59,7 @@ async fn main() -> result::Result<(), std::io::Error> {
         } else {
             &farming_words_2
         };
-        println!(
-            "Lowest patent number: {}",
-            &last_patent_highest.to_string()
-        );
+        println!("Lowest patent number: {}", &last_patent_highest.to_string());
         if poll(Duration::from_millis(100)).unwrap() {
             // will be used to break out of loop
             match read()? {
@@ -82,9 +80,9 @@ async fn main() -> result::Result<(), std::io::Error> {
             ));
             let resp: Response = reqwest::get(&query).await.unwrap(); //querys the api returns Response type
             let body: String = resp.text().await.unwrap(); // parses response to String
-            //println!("{}", body);
+                                                           //println!("{}", body);
             (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
-            patents.append(&mut patent_temp_list); 
+            patents.append(&mut patent_temp_list);
         }
         if !loop_counter && highest > last_patent_highest {
             println!("Lowest updated");
@@ -94,7 +92,11 @@ async fn main() -> result::Result<(), std::io::Error> {
         loop_counter = !loop_counter;
         let timer_millis = timer.elapsed().as_millis() as i64;
         println!("{}", timer_millis);
-        thread::sleep(Duration::from_millis(if 1300 - timer_millis > 0 { (1300 - timer_millis) as u64} else { 0 }));
+        thread::sleep(Duration::from_millis(if 1300 - timer_millis > 0 {
+            (1300 - timer_millis) as u64
+        } else {
+            0
+        }));
     } // end of loop
     write_all(&patents, &date_text, highest);
     Ok(())
@@ -195,7 +197,12 @@ fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
         let _ = write_patent_data(pat);
     }
     let _ = write_to_file(date_text.to_string(), &file_path_builder("date"));
-    if highest > read_first_line(&file_path_builder("highest")).unwrap().parse::<i64>().unwrap() {
+    if highest
+        > read_first_line(&file_path_builder("highest"))
+            .unwrap()
+            .parse::<i64>()
+            .unwrap()
+    {
         match write_to_file(highest.to_string(), &file_path_builder("highest")) {
             Ok(()) => {}
             Err(err) => {
@@ -206,57 +213,30 @@ fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
 }
 
 fn file_path_builder(file: &str) -> String {
-    let windows_file_path: String = String::from(r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\"#);
+    let windows_file_path: String = String::from(
+        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\"#,
+    );
     let mac_file_path: String = String::from("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/");
     let highest: &str = "highest";
     let date: &str = "date";
     let patents: &str = "patents";
     let query_text: &str = "FarmingQueryWords";
-    return match cfg!(windows){
-        true => {match file 
-            {
-            "highest" => {
-                windows_file_path + highest + ".txt"
-            }
-            "date" => {
-                windows_file_path + date + ".txt"
-            }
-            "patents" => {
-                windows_file_path + patents + ".csv"
-            }
-            "query1"=> {
-                windows_file_path + query_text + "1" + ".txt"
-            }
-            "query2" => {
-                windows_file_path + query_text + "2" + ".txt"
-            }
-            _ => {
-                "ERROR".to_string()
-            }
-        }
-    }
-    false => {match file 
-        {
-        "highest" => {
-            mac_file_path + highest + ".txt"
-        }
-        "date" => {
-            mac_file_path + date + ".txt"
-        }
-        "patents" => {
-            mac_file_path + patents + ".csv"
-        }
-        "query1"=> {
-            mac_file_path + query_text + "1" + ".txt"
-        }
-        "query2" => {
-            mac_file_path + query_text + "2" + ".txt"
-        }
-        _ => {
-            "ERROR".to_string()
-        }
-    }
-}
+    return match cfg!(windows) {
+        true => match file {
+            "highest" => windows_file_path + highest + ".txt",
+            "date" => windows_file_path + date + ".txt",
+            "patents" => windows_file_path + patents + ".csv",
+            "query1" => windows_file_path + query_text + "1" + ".txt",
+            "query2" => windows_file_path + query_text + "2" + ".txt",
+            _ => "ERROR".to_string(),
+        },
+        false => match file {
+            "highest" => mac_file_path + highest + ".txt",
+            "date" => mac_file_path + date + ".txt",
+            "patents" => mac_file_path + patents + ".csv",
+            "query1" => mac_file_path + query_text + "1" + ".txt",
+            "query2" => mac_file_path + query_text + "2" + ".txt",
+            _ => "ERROR".to_string(),
+        },
     };
-    
 }
