@@ -5,16 +5,16 @@ use crossterm::event::{poll, read, Event};
 use regex::Regex;
 use reqwest;
 use reqwest::Response;
+use std::fmt::Write;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::Write as writ;
 use std::result;
 use std::thread;
-use std::time::Duration;
-use std::fmt::Write;
-use std::io::Write as writ;
+use std::time::{Duration, Instant};
 struct Patent {
     title: String,
     date: String,
@@ -47,15 +47,30 @@ async fn main() -> result::Result<(), std::io::Error> {
     let mut patents: Vec<Patent> = Vec::new();
     let mut patent_temp_list: Vec<Patent> = Vec::new();
     // read user key
-    let (year, month, day) = regex_date(fs::read_to_string("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt").expect("Found None"));
-        let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
-        let mut date_text = String::new();
-        let mut last_patent_highest: i64 = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap();
-    loop {
-        println!("Earlydate at start of loop {:?}", earliest_date);
+    let (year, month, day) = regex_date(fs::read_to_string(if cfg!(windows) { 
+        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\date.txt"#
+    } else {
+        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt"})
+        .expect("Found None"));
+    let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
+    let mut date_text = String::new();
+    let mut last_patent_highest: i64 = read_first_line(if cfg!(windows) {
+        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\highest.txt"#
+    } else {
+        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt"})
+        .unwrap().parse::<i64>().unwrap();
+    loop { // TODO: MAKE IT SO WRITE_ALL IS CALLED WITHIN THE LOOP EVERY MONTH OR SO
+        let timer = Instant::now();
         date_text.clear();
-        write!(date_text, "{:02}-{:02}-{:02}", earliest_date.year(), earliest_date.month(), earliest_date.day()).expect("");
-        println!("Date text is {}", date_text);
+        write!(
+            date_text,
+            "{:02}-{:02}-{:02}",
+            earliest_date.year(),
+            earliest_date.month(),
+            earliest_date.day()
+        )
+        .expect("");
+        println!("Date: {}", date_text);
         farming_words = if loop_counter {
             &farming_words1
         } else {
@@ -87,17 +102,17 @@ async fn main() -> result::Result<(), std::io::Error> {
             let body: String = resp.text().await.unwrap(); // parses response to String
             //println!("{}", body);
             (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
-            patents.append(&mut patent_temp_list); // adds newly formatted patents to higher list.
-            // for pat in &patents {
-            //     println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
-            //    
-            // }
+            patents.append(&mut patent_temp_list); 
         }
-        if !loop_counter && highest > last_patent_highest{
+        if !loop_counter && highest > last_patent_highest {
+            println!("Lowest updated");
             last_patent_highest = highest;
         }
         earliest_date += dur::days(1);
-        thread::sleep(Duration::from_secs_f32(1.3));
+        loop_counter = !loop_counter;
+        let timer_millis = timer.elapsed().as_millis() as i64;
+        println!("{}", timer_millis);
+        thread::sleep(Duration::from_millis(if 1300 - timer_millis > 0 { (1300 - timer_millis) as u64} else { 0 }));
     } // end of loop
     write_all(&patents, &date_text, highest);
     Ok(())
