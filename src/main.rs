@@ -230,3 +230,59 @@ fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
         }
     }
 }
+
+fn return_file_path(file: &str) -> String {
+    let windows_file_path: String = String::from(r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\"#);
+    let mac_file_path: String = String::from("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/");
+    let highest: &str = "highest";
+    let date: &str = "date";
+    let patents: &str = "patents";
+    let query_text: &str = "FarmingQueryWords";
+    return match cfg!(windows){
+        true => {match file 
+            {
+            "highest" => {
+                windows_file_path + &highest + ".txt"
+            }
+            "date" => {
+                windows_file_path + &date + ".txt"
+            }
+            "patent" => {
+                windows_file_path + &patents + ".csv"
+            }
+            "Query1"=> {
+                windows_file_path + &query_text + "1" + ".txt"
+            }
+            "Query2" => {
+                windows_file_path + &query_text + "2" + ".txt"
+            }
+            _ => {
+                "ERROR".to_string()
+            }
+        }
+    }
+    false => {match file 
+        {
+        "highest" => {
+            mac_file_path + &highest + ".txt"
+        }
+        "date" => {
+            mac_file_path + &date + ".txt"
+        }
+        "patent" => {
+            mac_file_path + &patents + ".csv"
+        }
+        "Query1"=> {
+            mac_file_path + &query_text + "1" + ".txt"
+        }
+        "Query2" => {
+            mac_file_path + &query_text + "2" + ".txt"
+        }
+        _ => {
+            "ERROR".to_string()
+        }
+    }
+}
+    };
+    
+}
