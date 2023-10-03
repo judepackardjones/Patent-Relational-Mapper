@@ -25,39 +25,21 @@ struct Patent {
 async fn main() -> result::Result<(), std::io::Error> {
     let mut highest: i64 = 0;
     let farming_words1: String = fs::read_to_string
-    (if cfg!(windows) {
-        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords1.txt"# 
-    } else {
-        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt"
-    })
+    (file_path_builder("query1"))
     .expect("Error reading file 1");
-    //"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords1.txt" WINDOWS
-    //"/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt" MAC
     let farming_words_2: String = fs::read_to_string
-    (if cfg!(windows) {
-        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords2.txt"# 
-    } else {
-        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt"
-    })
+    (file_path_builder("query2"))
     .expect("Error reading file 2");
-    //"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords2.txt" WINDOWS
-    //"/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt" MAC
     let mut farming_words: &String;
     let mut loop_counter: bool = true;
     let mut patents: Vec<Patent> = Vec::new();
     let mut patent_temp_list: Vec<Patent> = Vec::new();
     // read user key
-    let (year, month, day) = regex_date(fs::read_to_string(if cfg!(windows) { 
-        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\date.txt"#
-    } else {
-        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt"})
+    let (year, month, day) = regex_date(fs::read_to_string(file_path_builder("date"))
         .expect("Found None"));
     let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
     let mut date_text = String::new();
-    let mut last_patent_highest: i64 = read_first_line(if cfg!(windows) {
-        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\highest.txt"#
-    } else {
-        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt"})
+    let mut last_patent_highest: i64 = read_first_line(file_path_builder("highest").as_str())
         .unwrap().parse::<i64>().unwrap();
     loop { // TODO: MAKE IT SO WRITE_ALL IS CALLED WITHIN THE LOOP EVERY MONTH OR SO
         let timer = Instant::now();
@@ -161,7 +143,8 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64) {
 }
 
 fn write_patent_data(patent: &Patent) -> std::io::Result<()> {
-    let path: &str = if cfg!(windows) {r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\patents.csv"#} else {"/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv"};
+    let binding = file_path_builder("patents");
+    let path: &str = binding.as_str();
     let mut file = OpenOptions::new().append(true).open(path).unwrap();
     let text_owner: String = String::new(); // If patent title contained commas, it was messing up writing to csv so needed to append quotes
     let text: String = String::from(
@@ -211,18 +194,9 @@ fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
     for pat in patents {
         let _ = write_patent_data(pat);
     }
-    let _ = write_to_file(date_text.to_string(), if cfg!(windows) { 
-        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\date.txt"#
-    } else {
-        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt"});
-    if highest > read_first_line(if cfg!(windows) {
-        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\highest.txt"#
-    } else {
-        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt"}).unwrap().parse::<i64>().unwrap() {
-        match write_to_file(highest.to_string(), if cfg!(windows) {
-            r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\highest.txt"#
-        } else {
-            "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt"}) {
+    let _ = write_to_file(date_text.to_string(), &file_path_builder("date"));
+    if highest > read_first_line(&file_path_builder("highest")).unwrap().parse::<i64>().unwrap() {
+        match write_to_file(highest.to_string(), &file_path_builder("highest")) {
             Ok(()) => {}
             Err(err) => {
                 println!("Error: {}", err);
@@ -231,7 +205,7 @@ fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
     }
 }
 
-fn return_file_path(file: &str) -> String {
+fn file_path_builder(file: &str) -> String {
     let windows_file_path: String = String::from(r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\"#);
     let mac_file_path: String = String::from("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/");
     let highest: &str = "highest";
@@ -242,19 +216,19 @@ fn return_file_path(file: &str) -> String {
         true => {match file 
             {
             "highest" => {
-                windows_file_path + &highest + ".txt"
+                windows_file_path + highest + ".txt"
             }
             "date" => {
-                windows_file_path + &date + ".txt"
+                windows_file_path + date + ".txt"
             }
-            "patent" => {
-                windows_file_path + &patents + ".csv"
+            "patents" => {
+                windows_file_path + patents + ".csv"
             }
-            "Query1"=> {
-                windows_file_path + &query_text + "1" + ".txt"
+            "query1"=> {
+                windows_file_path + query_text + "1" + ".txt"
             }
-            "Query2" => {
-                windows_file_path + &query_text + "2" + ".txt"
+            "query2" => {
+                windows_file_path + query_text + "2" + ".txt"
             }
             _ => {
                 "ERROR".to_string()
@@ -264,19 +238,19 @@ fn return_file_path(file: &str) -> String {
     false => {match file 
         {
         "highest" => {
-            mac_file_path + &highest + ".txt"
+            mac_file_path + highest + ".txt"
         }
         "date" => {
-            mac_file_path + &date + ".txt"
+            mac_file_path + date + ".txt"
         }
-        "patent" => {
-            mac_file_path + &patents + ".csv"
+        "patents" => {
+            mac_file_path + patents + ".csv"
         }
-        "Query1"=> {
-            mac_file_path + &query_text + "1" + ".txt"
+        "query1"=> {
+            mac_file_path + query_text + "1" + ".txt"
         }
-        "Query2" => {
-            mac_file_path + &query_text + "2" + ".txt"
+        "query2" => {
+            mac_file_path + query_text + "2" + ".txt"
         }
         _ => {
             "ERROR".to_string()
