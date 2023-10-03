@@ -5,32 +5,40 @@ use crossterm::event::{poll, read, Event};
 use regex::Regex;
 use reqwest;
 use reqwest::Response;
-use std::fmt::Write;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::io::Write as writ;
 use std::result;
 use std::thread;
 use std::time::Duration;
+use std::fmt::Write;
+use std::io::Write as writ;
 struct Patent {
     title: String,
     date: String,
     number: i64,
 }
-
+//TODO: Do commits more often. Don't just commit when the session is over
 #[tokio::main]
 async fn main() -> result::Result<(), std::io::Error> {
     let mut highest: i64 = 0;
     let farming_words1: String = fs::read_to_string
-    ("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt")
+    (if cfg!(windows) {
+        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords1.txt"# 
+    } else {
+        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt"
+    })
     .expect("Error reading file 1");
     //"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords1.txt" WINDOWS
     //"/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords1.txt" MAC
     let farming_words_2: String = fs::read_to_string
-    ("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt")
+    (if cfg!(windows) {
+        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords2.txt"# 
+    } else {
+        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt"
+    })
     .expect("Error reading file 2");
     //"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\FarmingQueryWords2.txt" WINDOWS
     //"/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/FarmingQueryWords2.txt" MAC
@@ -40,30 +48,22 @@ async fn main() -> result::Result<(), std::io::Error> {
     let mut patent_temp_list: Vec<Patent> = Vec::new();
     // read user key
     let (year, month, day) = regex_date(fs::read_to_string("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt").expect("Found None"));
-    let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
-    let mut date_text = String::new();
-    let mut lowest_patent_num: i64 = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap();
+        let mut earliest_date = NaiveDate::from_ymd_opt(year, month, day).unwrap();
+        let mut date_text = String::new();
+        let mut last_patent_highest: i64 = read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap();
     loop {
         println!("Earlydate at start of loop {:?}", earliest_date);
         date_text.clear();
-        write!(
-            date_text,
-            "{:02}-{:02}-{:02}",
-            earliest_date.year(),
-            earliest_date.month(),
-            earliest_date.day()
-        )
-        .expect("");
+        write!(date_text, "{:02}-{:02}-{:02}", earliest_date.year(), earliest_date.month(), earliest_date.day()).expect("");
         println!("Date text is {}", date_text);
         farming_words = if loop_counter {
             &farming_words1
         } else {
             &farming_words_2
         };
-        loop_counter = !loop_counter;
         println!(
-            "Lowest patent num found as {}",
-            &lowest_patent_num.to_string()
+            "Lowest patent number: {}",
+            &last_patent_highest.to_string()
         );
         if poll(Duration::from_millis(100)).unwrap() {
             // will be used to break out of loop
@@ -81,36 +81,25 @@ async fn main() -> result::Result<(), std::io::Error> {
         } else {
             patent_temp_list.clear(); // clears temp list so it can be used on next loop.
             let query = String::from(format!(
-                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_lt":{{"patent_date":"{date_text}"}}}},{{"_gt":{{"patent_number":"{lowest_patent_num}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
+                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_lt":{{"patent_date":"{date_text}"}}}},{{"_gt":{{"patent_number":"{last_patent_highest}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
             ));
             let resp: Response = reqwest::get(&query).await.unwrap(); //querys the api returns Response type
             let body: String = resp.text().await.unwrap(); // parses response to String
-            println!("{}", body);
+            //println!("{}", body);
             (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
             patents.append(&mut patent_temp_list); // adds newly formatted patents to higher list.
-                                                   // for pat in &patents {
-                                                   //     println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
-                                                   //
-                                                   // }
+            // for pat in &patents {
+            //     println!("***{}***{}***{}***", pat.title, pat.date, pat.number);
+            //    
+            // }
         }
-        if !loop_counter && highest > lowest_patent_num {
-            lowest_patent_num = highest;
+        if !loop_counter && highest > last_patent_highest{
+            last_patent_highest = highest;
         }
         earliest_date += dur::days(1);
-        thread::sleep(Duration::from_secs_f32(0.8));
+        thread::sleep(Duration::from_secs_f32(1.3));
     } // end of loop
-    for pat in &patents {
-        let _ = write_patent_data(pat);
-    }
-    let _ = write_to_file(date_text, "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt");
-    if highest > read_first_line("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt").unwrap().parse::<i64>().unwrap() {
-        match write_to_file(highest.to_string(), "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt") {
-            Ok(()) => {}
-            Err(err) => {
-                println!("Error: {}", err);
-            }
-        }
-    }
+    write_all(&patents, &date_text, highest);
     Ok(())
 }
 //TODO:Start of functions
@@ -157,7 +146,7 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64) {
 }
 
 fn write_patent_data(patent: &Patent) -> std::io::Result<()> {
-    let path: &str = "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv";
+    let path: &str = if cfg!(windows) {r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\patents.csv"#} else {"/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/Patents.csv"};
     let mut file = OpenOptions::new().append(true).open(path).unwrap();
     let text_owner: String = String::new(); // If patent title contained commas, it was messing up writing to csv so needed to append quotes
     let text: String = String::from(
@@ -183,8 +172,6 @@ fn read_first_line(filepath: &str) -> std::io::Result<String> {
 }
 
 fn write_to_file(text: String, filepath: &str) -> std::io::Result<()> {
-    println!("text being written:{}", text);
-    println!("Filepath:{}", filepath);
     let mut file = File::create(filepath)?;
     file.write_all(text.as_bytes())?;
     Ok(())
@@ -192,7 +179,6 @@ fn write_to_file(text: String, filepath: &str) -> std::io::Result<()> {
 
 fn regex_date(date: String) -> (i32, u32, u32) {
     let re_date = Regex::new(r#"(\d{4})-(\d{2})-(\d{2})"#).unwrap();
-    println!("Date being parsed:{}", date);
     let mut date_vec = vec![];
     for (_, [year, month, day]) in re_date.captures_iter(&date).map(|c| c.extract()) {
         date_vec.push(year.parse::<i32>().unwrap());
@@ -204,4 +190,28 @@ fn regex_date(date: String) -> (i32, u32, u32) {
         date_vec[1].try_into().unwrap(),
         date_vec[2].try_into().unwrap(),
     )
+}
+
+fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
+    for pat in patents {
+        let _ = write_patent_data(pat);
+    }
+    let _ = write_to_file(date_text.to_string(), if cfg!(windows) { 
+        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\date.txt"#
+    } else {
+        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/date.txt"});
+    if highest > read_first_line(if cfg!(windows) {
+        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\highest.txt"#
+    } else {
+        "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt"}).unwrap().parse::<i64>().unwrap() {
+        match write_to_file(highest.to_string(), if cfg!(windows) {
+            r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\highest.txt"#
+        } else {
+            "/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/highest.txt"}) {
+            Ok(()) => {}
+            Err(err) => {
+                println!("Error: {}", err);
+            }
+        }
+    }
 }
