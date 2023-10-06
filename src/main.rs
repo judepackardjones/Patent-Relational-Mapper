@@ -41,7 +41,7 @@ async fn main() -> result::Result<(), std::io::Error> {
         .unwrap()
         .parse::<i64>()
         .unwrap();
-    let mut file_write_timer:u8 = 0;
+    let mut file_write_timer: u8 = 0;
     loop {
         // TODO: MAKE IT SO WRITE_ALL IS CALLED WITHIN THE LOOP EVERY MONTH OR SO
         let timer = Instant::now();
@@ -77,11 +77,11 @@ async fn main() -> result::Result<(), std::io::Error> {
         } else {
             patent_temp_list.clear(); // clears temp list so it can be used on next loop.
             let query = String::from(format!(
-                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_lt":{{"patent_date":"{date_text}"}}}},{{"_gt":{{"patent_number":"{last_patent_highest}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
+                r#"https://api.patentsview.org/patents/query?q={{"_and":[{{"_lt":{{"patent_date":"{date_text}"}}}},{{"_not":{{"_or":[{{"_begins":{{"patent_number":"R"}}}},{{"_begins":{{"patent_number":"H"}}}},{{"_begins":{{"patent_number":"P"}}}}]}}}},{{"_gt":{{"patent_number":"{last_patent_highest}"}}}},{{"_text_any":{{"patent_title":"{farming_words}"}}}},{{"_text_any":{{"patent_abstract":"{farming_words}"}}}}]}}&f=["patent_title","patent_date","patent_number"]"#
             ));
             let resp: Response = reqwest::get(&query).await.unwrap(); //querys the api returns Response type
             let body: String = resp.text().await.unwrap(); // parses response to String
-                                                           //println!("{}", body);
+            println!("{}", body);
             (patent_temp_list, highest) = format_patent(body); // converts the raw String to a list of patents with the Patent type
             patents.append(&mut patent_temp_list);
         }
@@ -111,7 +111,7 @@ async fn main() -> result::Result<(), std::io::Error> {
 //TODO:Start of functions
 fn format_patent(patents: String) -> (Vec<Patent>, i64) {
     let mut highest: i64 = 0;
-    let mut parsed_patent: Vec<Patent> = Vec::new();
+    let mut parsed_patents: Vec<Patent> = Vec::new();
     let re_over = Regex::new(r#"(\{"patent_title"[^}]*\})"#).unwrap();
     let mut patent_captures = vec![];
     for (_, [pat]) in re_over.captures_iter(patents.as_str()).map(|c| c.extract()) {
@@ -138,7 +138,7 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64) {
                 }
             }
         }
-        parsed_patent.push(Patent {
+        parsed_patents.push(Patent {
             title: captures_in_vec.get(0).unwrap_or(&"".to_string()).clone(),
             date: captures_in_vec.get(1).unwrap_or(&"".to_string()).clone(),
             number: captures_in_vec
@@ -148,7 +148,7 @@ fn format_patent(patents: String) -> (Vec<Patent>, i64) {
         });
     }
 
-    (parsed_patent, highest)
+    (parsed_patents, highest)
 }
 
 fn write_patent_data(patent: &Patent) -> std::io::Result<()> {
@@ -220,9 +220,7 @@ fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
 }
 
 fn file_path_builder(file: &str) -> String {
-    let windows_file_path: String = String::from(
-        r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\"#,
-    );
+    let windows_file_path: String = String::from(r#"C:\Users\judep\OneDrive\Desktop\Programming\Rust\patentRelationalMapper\Project assets\"#,);
     let mac_file_path: String = String::from("/Users/judepackard-jones/Desktop/Programming/Rust/Patent-relational-mapper/Project assets/");
     let highest: &str = "highest";
     let date: &str = "date";
