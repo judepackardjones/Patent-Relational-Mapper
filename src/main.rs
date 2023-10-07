@@ -201,7 +201,9 @@ fn regex_date(date: String) -> (i32, u32, u32) {
 
 fn write_all(patents: &Vec<Patent>, date_text: &String, highest: i64) {
     for pat in patents {
+        if pat.number > highest {
         let _ = write_patent_data(pat);
+        }
     }
     let _ = write_to_file(date_text.to_string(), &file_path_builder("date"));
     if highest
